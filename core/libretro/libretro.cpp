@@ -214,6 +214,8 @@ bool enable_rtt                 = true;
 static bool is_dupe             = false;
 static bool initialize_renderer = false;
 static bool resize_renderer     = false;
+static unsigned old_width       = 0;
+static unsigned old_height      = 0;
 void rend_initialization();
 
 static void update_variables(bool first_boot)
@@ -236,10 +238,27 @@ static void update_variables(bool first_boot)
       if (pch)
          screen_height = strtoul(pch, NULL, 0);
 
-      if (!first_boot)
-         resize_renderer = true;
+      if (first_boot)
+      {
+         old_width       = screen_width;
+         old_height      = screen_height;
+      }
+      else
+      {
+         if (screen_height != old_height || screen_width != old_width)
+         {
+            old_width       = screen_width;
+            old_height      = screen_height;
+            resize_renderer = true;
+         }
+      }
 
       fprintf(stderr, "[reicast]: Got size: %u x %u.\n", screen_width, screen_height);
+   }
+   else
+   {
+      old_width       = screen_width;
+      old_height      = screen_height;
    }
 
    var.key = "reicast_cpu_mode";
@@ -398,7 +417,7 @@ void retro_run (void)
       rend_initialization();
       initialize_renderer = false;
    }
-   if (resize_renderer)
+   else if (resize_renderer)
    {
       struct retro_system_av_info new_av_info;
       retro_get_system_av_info(&new_av_info);
