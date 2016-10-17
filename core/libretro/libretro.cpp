@@ -132,7 +132,7 @@ void retro_set_environment(retro_environment_t cb)
       },
       {
          "reicast_internal_resolution",
-         "Internal resolution (restart); 640x480|1280x960|1920x1440|2560x1920|3200x2400|3840x2880|4480x3360",
+         "Internal resolution; 640x480|1280x960|1920x1440|2560x1920|3200x2400|3840x2880|4480x3360",
       },
       {
          "reicast_mipmapping",
@@ -210,10 +210,13 @@ void retro_deinit(void)
    first_run = true;
 }
 
-bool enable_rtt     = true;
-static bool is_dupe = false;
+bool enable_rtt                 = true;
+static bool is_dupe             = false;
+static bool initialize_renderer = false;
+static bool resize_renderer     = false;
+void rend_initialization();
 
-static void update_variables(void)
+static void update_variables(bool first_boot)
 {
    static bool widescreen_set = false;
    struct retro_variable var = {
@@ -232,6 +235,9 @@ static void update_variables(void)
       pch = strtok(NULL, "x");
       if (pch)
          screen_height = strtoul(pch, NULL, 0);
+
+      if (!first_boot)
+         resize_renderer = true;
 
       fprintf(stderr, "[reicast]: Got size: %u x %u.\n", screen_width, screen_height);
    }
@@ -372,11 +378,12 @@ static void update_variables(void)
       enable_purupuru = (strcmp("enabled", var.value) == 0);
 }
 
+
 void retro_run (void)
 {
    bool updated = false;
    if (environ_cb(RETRO_ENVIRONMENT_GET_VARIABLE_UPDATE, &updated) && updated)
-      update_variables();
+      update_variables(false);
 
    if (first_run)
    {
@@ -384,6 +391,17 @@ void retro_run (void)
       dc_run();
       first_run = false;
       return;
+   }
+
+   if (initialize_renderer)
+   {
+      rend_initialization();
+      initialize_renderer = false;
+   }
+   if (resize_renderer)
+   {
+      rend_resize(screen_width, screen_height);
+      resize_renderer = false;
    }
 
    dc_run();
@@ -400,19 +418,24 @@ void retro_reset (void)
    dc_term();
    first_run = true;
    settings.dreamcast.cable = 3;
-   update_variables();
+   update_variables(false);
 }
 
+
 #if defined(HAVE_OPENGL) || defined(HAVE_OPENGLES)
+
 static void context_reset(void)
 {
    printf("context_reset.\n");
    glsm_ctl(GLSM_CTL_STATE_CONTEXT_RESET, NULL);
+   initialize_renderer = true;
+
 }
 
 static void context_destroy(void)
 {
    glsm_ctl(GLSM_CTL_STATE_CONTEXT_DESTROY, NULL);
+   rend_term();
 }
 #endif
 
@@ -525,7 +548,7 @@ bool retro_load_game(const struct retro_game_info *game)
    snprintf(game_dir_no_slash, sizeof(game_dir_no_slash), "%s%cdc", dir, slash);
 
    settings.dreamcast.cable = 3;
-   update_variables();
+   update_variables(true);
 
    if (game->path[0] == '\0')
       boot_to_bios = true;

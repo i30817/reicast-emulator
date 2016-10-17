@@ -90,7 +90,10 @@ void rend_end_render(void)
       renderer->Present();
 }
 
-void rend_term(void) { }
+void rend_term(void)
+{ 
+   renderer->Term();
+}
 #else
 static bool rend_frame(TA_context* ctx, bool draw_osd)
 {
@@ -133,6 +136,9 @@ static bool rend_single_frame(void)
    return do_swp;
 }
 
+extern int screen_width;
+extern int screen_height;
+
 void rend_initialization(void)
 {
 #if SET_AFNT
@@ -151,13 +157,12 @@ void rend_initialization(void)
 
    if (!renderer->Init())
       die("rend->init() failed\n");
+   renderer->Resize(screen_width, screen_height);
 }
 
 static void *rend_thread(void* p)
 {
    rend_initialization();
-   //we don't know if this is true, so let's not speculate here
-   //renderer->Resize(640, 480);
 
    for(;;)
    {
@@ -234,8 +239,6 @@ void rend_end_wait()
 }
 */
 
-extern int screen_width;
-extern int screen_height;
 
 
 bool rend_init(void)
@@ -246,10 +249,7 @@ bool rend_init(void)
 	renderer = rend_GLES2();
 #endif
 
-#if defined(TARGET_NO_THREADS)
-   rend_initialization();
-   renderer->Resize(screen_width, screen_height);
-#else
+#if !defined(TARGET_NO_THREADS)
    rthd = (sthread_t*)sthread_create(rend_thread, 0);
 #endif
 
