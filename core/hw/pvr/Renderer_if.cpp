@@ -133,7 +133,7 @@ static bool rend_single_frame(void)
    return do_swp;
 }
 
-static void *rend_thread(void* p)
+void rend_initialization(void)
 {
 #if SET_AFNT
    cpu_set_t mask;
@@ -151,7 +151,11 @@ static void *rend_thread(void* p)
 
    if (!renderer->Init())
       die("rend->init() failed\n");
+}
 
+static void *rend_thread(void* p)
+{
+   rend_initialization();
    //we don't know if this is true, so let's not speculate here
    //renderer->Resize(640, 480);
 
@@ -233,6 +237,7 @@ void rend_end_wait()
 extern int screen_width;
 extern int screen_height;
 
+
 bool rend_init(void)
 {
 #ifdef NO_REND
@@ -241,31 +246,15 @@ bool rend_init(void)
 	renderer = rend_GLES2();
 #endif
 
-#if !defined(TARGET_NO_THREADS)
-   rthd = (sthread_t*)sthread_create(rend_thread, 0);
-#else
-   if (!renderer->Init()) die("rend->init() failed\n");
-
+#if defined(TARGET_NO_THREADS)
+   rend_initialization();
    renderer->Resize(screen_width, screen_height);
-#endif
-
-#if SET_AFNT
-	cpu_set_t mask;
-
-	/* CPU_ZERO initializes all the bits in the mask to zero. */
-	CPU_ZERO( &mask );
-	/* CPU_SET sets only the bit corresponding to cpu. */
-	CPU_SET( 0, &mask );
-
-	/* sched_setaffinity returns 0 in success */
-
-	if( sched_setaffinity( 0, sizeof(mask), &mask ) == -1 )
-		printf("WARNING: Could not set CPU Affinity, continuing...\n");
+#else
+   rthd = (sthread_t*)sthread_create(rend_thread, 0);
 #endif
 
 	return true;
 }
-
 
 void rend_vblank(void)
 {
