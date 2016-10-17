@@ -400,8 +400,15 @@ void retro_run (void)
    }
    if (resize_renderer)
    {
+      struct retro_system_av_info new_av_info;
+      retro_get_system_av_info(&new_av_info);
+
       rend_resize(screen_width, screen_height);
       resize_renderer = false;
+
+      environ_cb(RETRO_ENVIRONMENT_SET_GEOMETRY, &new_av_info);
+      environ_cb(RETRO_ENVIRONMENT_SET_SYSTEM_AV_INFO,
+               &new_av_info);
    }
 
    dc_run();
