@@ -157,7 +157,7 @@ void rend_initialization(void)
 
    if (!renderer->Init())
       die("rend->init() failed\n");
-   renderer->Resize(screen_width, screen_height);
+   rend_resize(screen_width, screen_height);
 }
 
 static void *rend_thread(void* p)
